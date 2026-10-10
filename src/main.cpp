@@ -14,6 +14,7 @@ using namespace geode::prelude;
 namespace {
     int  g_particleDensity = 100;
     bool g_hideDecorations = false;
+    FpsCounter* g_fpsCounter = nullptr;
 }
 
 $on_mod(Loaded) {
@@ -21,10 +22,10 @@ $on_mod(Loaded) {
     g_particleDensity = static_cast<int>(mod->getSettingValue<int64_t>("particle-density"));
     g_hideDecorations = mod->getSettingValue<bool>("hide-decorations");
 
-    listenForSettingChanges("particle-density", [](int64_t v) {
+    mod->listenForSettingChanges<int64_t>("particle-density", [](int64_t v) {
         g_particleDensity = static_cast<int>(v);
     });
-    listenForSettingChanges("hide-decorations", [](bool v) {
+    mod->listenForSettingChanges<bool>("hide-decorations", [](bool v) {
         g_hideDecorations = v;
     });
 }
@@ -125,13 +126,26 @@ class $modify(FpsMenuLayer, MenuLayer) {
     bool init() {
         if (!MenuLayer::init()) return false;
 
-        static bool created = false;
-        if (!created) {
-            created = true;
-            auto counter = FpsCounter::create();
-            if (counter) SceneManager::get()->keepAcrossScenes(counter);
+        if (!g_fpsCounter) {
+            g_fpsCounter = FpsCounter::create();
+            if (g_fpsCounter) {
+                CCDirector::get()->getRunningScene()->addChild(g_fpsCounter, 9999);
+            }
         }
         return true;
+    }
+};
+
+// Keep counter visible across scenes
+class $modify(FpsPlayLayer, PlayLayer) {
+    void onQuit() {
+        PlayLayer::onQuit();
+        if (g_fpsCounter && g_fpsCounter->getParent()) {
+            g_fpsCounter->retain();
+            g_fpsCounter->removeFromParent();
+            CCDirector::get()->getRunningScene()->addChild(g_fpsCounter, 9999);
+            g_fpsCounter->release();
+        }
     }
 };
 
