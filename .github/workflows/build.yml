@@ -23,7 +23,6 @@ jobs:
         with:
           combine: true
           target: ${{ matrix.config.target }}
-          geode-version: "5.0.0"
 
   package:
     name: Package builds
